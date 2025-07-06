@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Онлайн Чат</title>
+
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <meta name="theme-color" content="#007bff">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: sans-serif;
+      background: #f4f4f4;
+    }
+
+    #modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    #modal-content input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+
+    #modal-content button {
+      margin-top: 10px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #modal-content button:hover {
+      background: #0056b3;
+    }
+
+    #chat-container {
+      display: none;
+      height: 100%;
+      width: 100%;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+      padding: 0;
+      margin-bottom: 10px;
+      border: 1px solid #eee;
+      border-radius: 4px;
+    }
+
+    #messages li {
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .btn-square {
+      width: 40px;
+      height: 40px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      margin-left: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .btn-square:hover {
+      background: #0056b3;
+    }
+
+    #form {
+      display: flex;
+      margin-top: 10px;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+    }
+
+    #emoji-panel {
+      display: none;
+      margin-top: 10px;
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    #emoji-panel span {
+      font-size: 24px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    /* Радужная анимация */
+    .rainbow-letter {
+      display: inline-block;
+      animation: rainbowColor 1s linear infinite;
+    }
+
+    @keyframes rainbowColor {
+      0% { color: red; }
+      16% { color: orange; }
+      32% { color: yellow; }
+      48% { color: green; }
+      64% { color: blue; }
+      80% { color: indigo; }
+      100% { color: violet; }
+    }
+  </style>
+</head>
+<body>
+  <div id="modal">
+    <div id="modal-content">
+      <h3>Как вас зовут?</h3>
+      <input id="username-input" placeholder="Введите ваш ник" />
+      <button id="start-chat">Начать чат</button>
+    </div>
+  </div>
+
+  <div id="chat-container">
+    <h2>🌐Онлайн Чат</h2>
+
+    <ul id="messages"></ul>
+
+    <form id="form" enctype="multipart/form-data">
+      <input id="input" type="text" autocomplete="off" placeholder="Введите сообщение..." />
+
+      <button type="button" class="btn-square" id="emoji-btn">+</button>
+
+      <button id="send" type="submit" class="btn-square">➤</button>
+    </form>
+
+    <div id="emoji-panel">
+      <span>😊</span>
+      <span>😂</span>
+      <span>😎</span>
+      <span>😍</span>
+      <span>🤔</span>
+      <span>❤️</span>
+      <span>🚀</span>
+      <span>🌟</span>
+      <span>🎉</span>
+      <span>😑</span>
+      <span>😏</span>
+      <span>🥳</span>
+      <span>👨‍💻</span>
+      <span>👨‍🎓</span>
+      <span>🍉</span>
+      <span>⚽️</span>
+      <span>💻</span>
+      <span>📱</span>
+      <span>✔️</span>
+      <span>❌</span>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    let username = "";
+
+    document.getElementById('start-chat').addEventListener('click', () => {
+      const value = document.getElementById('username-input').value.trim();
+      if (value) {
+        username = value;
+        socket.emit('set username', username);
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('chat-container').style.display = 'flex';
+      } else {
+        alert("Введите ваш ник!");
+      }
+    });
+
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value.trim()) {
+        socket.emit('chat message', input.value);
+        input.value = '';
+      }
+    });
+
+    socket.on('chat history', (history) => {
+      messages.innerHTML = '';
+      history.forEach(msg => addMessage(msg));
+    });
+
+    socket.on('chat message', (msg) => {
+      addMessage(msg);
+    });
+
+    function addMessage(msg) {
+      const li = document.createElement('li');
+
+      const rainbowName = rainbowify(msg.username);
+      const rainbowText = rainbowify(msg.text);
+
+      li.innerHTML = `${rainbowName}: ${rainbowText}`;
+      messages.appendChild(li);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function rainbowify(text) {
+      let html = "";
+      const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+      const graphemes = Array.from(segmenter.segment(text), s => s.segment);
+
+      for (let i = 0; i < graphemes.length; i++) {
+        const char = graphemes[i];
+        if (isEmoji(char)) {
+          html += char;
+        } else {
+          html += `<span class="rainbow-letter" style="animation-delay:${i * 0.2}s">${char}</span>`;
+        }
+      }
+      return html;
+    }
+
+    function isEmoji(char) {
+      const code = char.codePointAt(0);
+      return code >= 0x1F300 && code <= 0x1FAFF;
+    }
+
+    document.getElementById('emoji-btn').addEventListener('click', () => {
+      const panel = document.getElementById('emoji-panel');
+      panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+    });
+
+    document.getElementById('emoji-panel').addEventListener('click', (e) => {
+      if (e.target.tagName === 'SPAN') {
+        const emoji = e.target.textContent;
+        input.value += emoji;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
