@@ -5,7 +5,7 @@ const io = require('socket.io')(http);
 
 const messages = []; // Хранилище сообщений
 
-app.use(express.static('public'));
+app.use(express.static('index.html'));
 
 io.on('connection', (socket) => {
   let username = 'Гость';
